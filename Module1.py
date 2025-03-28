@@ -14,6 +14,8 @@ def clean_data(file_content):
         
         # Process the line (strip whitespace and split by commas)
         data = re.split(r',\s*(?=(?:(?:[^"]*"){2})*[^"]*$)', line)
+
+        data = [item.replace('=', '').strip().strip('"') for item in data]
         
         # Append the processed data to the list
         processed_data.append(data)
@@ -38,7 +40,7 @@ def clean_data(file_content):
 
     # Convert processed data into a DataFrame
     data_df = pd.DataFrame(processed_data[1:], columns=processed_data[0])
-    
+    print(data_df)
     # Drop unnecessary columns
     data_df = data_df.drop(["Run Date", "Job No", "Dup Bill Fee", "DQ"], axis=1)
     
@@ -56,5 +58,5 @@ def clean_data(file_content):
 
     # Remove any remaining quotation marks in the 'Borrower Name' column
     data_df["Borrower Name"] = data_df["Borrower Name"].replace('"', '', regex=True)
-    
+
     return data_df

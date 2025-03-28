@@ -1,0 +1,5 @@
+[theme]
+base = "dark"
+backgroundColor="#053373"  # Custom background color
+primaryColor="#6C7CA4"  # Optional: Set your primary color
+textColor="#ffffff"  # Optional: Define the text color

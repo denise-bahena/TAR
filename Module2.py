@@ -6,7 +6,7 @@ def clean_and_process_data(new_df, ndd_df, data_df):
     conversions = {
         'new_df' : {'Balance' : float},
         'ndd_df' : {'Next Pymt Amt' : float, 'Escrow Balance' : float},
-        'data_df' : {'Agency No' : int, 'Loan id' : int, 'Tax Due' : float, 'Total Tax' : float, 'Net Tax' : float}
+        'data_df' : {'Loan id' : int, 'Tax Due' : float, 'Total Tax' : float, 'Net Tax' : float}
     }
 
     # Iterate over the DataFrames and their respective columns in the conversions dictionary

@@ -13,8 +13,9 @@ pages= {
     "Summary Sheet Generation Page" : "summary.py"
 }
 
-# Create navigation options
-page = st.sidebar.selectbox("Select a page", ["Home Page", "Summary Sheet Generation Page"])
+# Create a non-editable navigation options using radio buttons
+page = st.sidebar.radio("Select a page", list(pages.keys()))
+
 # Inject custom CSS to style the buttons
 st.markdown(
     """

@@ -86,7 +86,6 @@ if page == "Home Page":
 
                 states_df = filter_state_dfs(data_df)
                 sum_sheets = generate_summary_sheet(states_df)
-                st.write(sum_sheets)
                 
                 # Debugging: Check if the file is generated properly
                 st.write("Excel file(s) generating ...")

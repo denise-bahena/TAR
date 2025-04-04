@@ -10,7 +10,11 @@ def filter_state_dfs(df):
         "20": "MA",  # Massachusetts
         "38": "RI",  # Rhode Island
         "28": "NH",  # New Hampshire
-        "06": "CT"   # Connecticut
+        "06": "CT",
+        "09": "FL",
+        "31": "NY",
+        "32": "NC",
+        "41": "TN"
     }
     
     # Get the unique state abbreviations from the "Agency" column

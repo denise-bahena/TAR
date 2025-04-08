@@ -17,24 +17,16 @@ def filter_state_dfs(df):
         "41": "TN"
     }
     
-    # Get the unique state abbreviations from the "Agency" column
-    states = df['Agency'].unique()
-    
-    # Loop through each state abbreviation
-    for state in states:
-        # Extract the first two characters to map to state codes
-        state_num = state.split()[0][:2]
-        
-        # Check if the state_num exists in the state_codes dictionary
-        if state_num in state_codes:
-            # Filter the DataFrame for the current state
-            state_df = df[df["Agency"] == state]
-            
-            # Store the filtered DataFrame in the dictionary with state abbreviation as the key
-            filtered_state_dfs[state_codes[state_num]] = state_df
-        else:
-            # If the state_num is not found, print an error message
-            st.write(f"Cannot identify state for code: {state_num}")
+    # Group by the first two digits of the 'Agency' column
+    grouped = df.groupby(df['Agency'].str[:2])
+
+    # Create a dictionary to store each group
+    filtered_state_dfs = {}
+
+    # Save each group to the dictionary as a new DataFrame with state name as the key
+    for name, group in grouped:
+        state = state_codes.get(name)  # Default to 'Unknown' if no match
+        filtered_state_dfs[state] = group
     
     # Return the dictionary of filtered DataFrames
     return filtered_state_dfs

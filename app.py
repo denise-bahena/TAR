@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import datetime
 import io
 from Module1 import clean_data  # Ensure these modules exist and are in the correct path
 from Module2 import clean_and_process_data
@@ -38,6 +39,8 @@ if page == "Home Page":
     # Add a title to your app
     st.title("TAR Generator")
 
+    due_year = st.number_input("Enter the year your report is due:", min_value = datetime.datetime.now().year, max_value = 2100, step=1)
+
     uploaded_files = st.file_uploader("Please upload all files pertinent to the report", accept_multiple_files=True)
 
     # Variable to control when to display data
@@ -52,7 +55,7 @@ if page == "Home Page":
         for file in uploaded_files:
             # Get the file name from the UploadedFile object
             file_name = file.name.lower().split('.csv')[0].split(' ')[0]  # Get the file name
-            
+
             # Handle CSV files
             if 'analyze' in file_name:  # Checking if 'analyze' is in the file name
                 file_content = file.read().decode("utf-8")
@@ -66,45 +69,40 @@ if page == "Home Page":
 
         # Check if 'file_content' exists before passing it to clean_data function
         if 'file_content' in locals():
-            module1_data = clean_data(file_content)
+            module1_data = clean_data(file_content, due_year)
         
-        # Ensure 'new_loans_(escrow)_[dmnd]' is available in the uploaded files
-        if 'new_loans_(escrow)_[dmnd]' in df_dict and 'escrow_next_disbursement_[dmnd]' in df_dict:
-            new_df, ndd_df, data_df = clean_and_process_data(
-                df_dict['new_loans_(escrow)_[dmnd]'], 
-                df_dict['escrow_next_disbursement_[dmnd]'], 
-                module1_data
+        new_df, ndd_df, data_df = clean_and_process_data(
+            df_dict['new_loans_(escrow)_[dmnd]'], 
+            df_dict['escrow_next_disbursement_[dmnd]'], 
+            module1_data
             )
 
-            # Ensure 'escrow_restricted_lockouts_[dmnd]' and other required files exist
-            if 'escrow_restricted_lockouts_[dmnd]' in df_dict and 'closed_loans_[dmnd]' in df_dict:
-                data_df, lockouts_df, new_df, closed_df, ndd_df = merge_and_clean_data(
-                    data_df, df_dict['escrow_restricted_lockouts_[dmnd]'], 
-                    new_df, df_dict['closed_loans_[dmnd]'], 
-                    ndd_df
-                )
+        data_df, lockouts_df, new_df, closed_df, ndd_df = merge_and_clean_data(
+            data_df, df_dict['escrow_restricted_lockouts_[dmnd]'], 
+            new_df, df_dict['closed_loans_[dmnd]'], 
+            ndd_df
+            )
+        
+        st.write(data_df)
 
-                states_df = filter_state_dfs(data_df)
-                sum_sheets = generate_summary_sheet(states_df)
+        states_df = filter_state_dfs(data_df)
+        
+        sum_sheets = generate_summary_sheet(states_df)
                 
                 # Debugging: Check if the file is generated properly
-                st.write("Excel file(s) generating ...")
+        st.write("Excel file(s) generating ...")
 
-                # Create a download button for the user
-                st.download_button(
-                    label="Download Report(s)",  # Label for the button
-                    data = create_zip_file(states_df, lockouts_df, new_df, closed_df, ndd_df, sum_sheets),         # The in-memory binary data
-                    file_name = "TAR_reports.zip",  # Name of the file to be downloaded
-                    mime="application/zip",
-                    key = "download_all_reports"
-                    )
-            else:
-                st.write("Required files are missing for merging and cleaning.")
-        else:
-            st.write("File content for 'analyze' not found.")
+        # Create a download button for the user
+        st.download_button(
+            label="Download Report(s)",  # Label for the button
+            data = create_zip_file(states_df, lockouts_df, new_df, closed_df, ndd_df, sum_sheets),         # The in-memory binary data
+            file_name = "TAR_reports.zip",  # Name of the file to be downloaded
+            mime="application/zip",
+            key = "download_all_reports"
+            )
     else:
-        # No files uploaded or "Process Data" button hasn't been clicked yet
-        st.write("Upload your files and click the button to process them.")
+        st.write("Required files are missing for merging and cleaning.")
+
 elif page == "Summary Sheet Generation Page":
     # Code for the Summary Sheet Generation Page
     st.title("Summary Sheet Generation")

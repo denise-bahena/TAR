@@ -1,7 +1,9 @@
 import re
 import pandas as pd
+from datetime import datetime
 
-def clean_data(file_content):
+
+def clean_data(file_content, year):
     processed_data = []
 
     # Use splitlines() to split the string into lines
@@ -49,5 +51,11 @@ def clean_data(file_content):
 
     # Remove any remaining quotation marks in the 'Borrower Name' column
     data_df["Borrower Name"] = data_df["Borrower Name"].replace('"', '', regex=True)
+
+    data_df['Due Date'] = data_df['Due Date'].apply(lambda x: datetime.strptime(f"{year}-{x}", "%Y-%m/%d").date())
+
+    # Ensure the 'Full Due Date' is in the MM/DD/YYYY format
+    data_df['Due Date'] = pd.to_datetime(data_df['Due Date'], format='%m/%d/%Y').dt.date
+
 
     return data_df

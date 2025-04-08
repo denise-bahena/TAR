@@ -2,6 +2,7 @@ import pandas as pd
 import re
 
 def clean_and_process_data(new_df, ndd_df, data_df):
+    
     # Conversions dictionary
     conversions = {
         'new_df' : {'Balance' : float},
@@ -19,6 +20,9 @@ def clean_and_process_data(new_df, ndd_df, data_df):
                 
             # Convert the column to the appropriate data type
             df[col] = pd.to_numeric(df[col], errors='coerce').astype(dtype)
+    
+    #Display the largest date
+    latest_date = data_df["Due Date"].max()
 
     # Columns to drop from 'ndd_df'
     cols_to_drop = [
@@ -41,6 +45,8 @@ def clean_and_process_data(new_df, ndd_df, data_df):
 
     # Convert the 'Next Sched Pymt Dt' column to datetime format using a specific date format
     ndd_df['Next Sched Pymt Dt'] = pd.to_datetime(ndd_df['Next Sched Pymt Dt'], format='%d-%b-%Y').dt.date
+
+    ndd_df = ndd_df[ndd_df["Next Sched Pymt Dt"] <= latest_date]
 
     # Return the cleaned dataframes
     return new_df, ndd_df, data_df

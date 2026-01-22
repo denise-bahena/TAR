@@ -4,5 +4,7 @@ scipy
 jupyterlab
 notebook
 ipython
-streamlit
 openpyxl
+altair<5
+streamlit==1.19.0
+-c constraints.txt

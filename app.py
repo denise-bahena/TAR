@@ -57,7 +57,7 @@ if page == "Home Page":
             file_name = file.name.lower().split('.csv')[0].split(' ')[0]  # Get the file name
 
             # Handle CSV files
-            if 'analyze' in file_name:  # Checking if 'analyze' is in the file name
+            if 'CoreLogic' in file_name:  # Checking if 'analyze' is in the file name
                 file_content = file.read().decode("utf-8")
             
             # Handle other files (e.g., .lis or CSV without 'analyze')

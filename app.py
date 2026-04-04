@@ -1,139 +1,139 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import io
-from Module1 import clean_data  # Ensure these modules exist and are in the correct path
+import re
+from abemodule import clean_corelogic_df
 from Module2 import clean_and_process_data
 from Module3 import merge_and_clean_data
 from Module4 import summary_sheet, generate_summary_sheet
 from Module5 import filter_state_dfs
 from Module6 import create_excel_for_state, create_zip_file
 
-pages= {
-    "Home Page" : "app.py",
-    "Summary Sheet Generation Page" : "summary.py"
-}
-
-# Create a non-editable navigation options using radio buttons
-page = st.sidebar.radio("Select a page", list(pages.keys()))
-
-# Inject custom CSS to style the buttons
-st.markdown(
-    """
-    <style>
-    .stButton>button {
-        background-color: #D8AF65;  /* Set button color to #D8AF65 */
-        color: white;  /* Set button text color to white */
-        border-radius: 5px;  /* Optional: Rounded corners */
-        padding: 10px 20px;  /* Optional: Adjusts the padding */
-        font-size: 16px;  /* Optional: Adjusts the font size */
-    }
-    .stButton>button:hover {
-        background-color: #C89A5A;  /* Optional: Set hover effect color */
-    }
-    </style>
-    """, unsafe_allow_html=True
+# -------------------------------
+# User input: report year
+# -------------------------------
+due_year = st.number_input(
+    "Enter the year your report is due:",
+    min_value=datetime.datetime.now().year,
+    max_value=2100,
+    step=1
 )
 
-if page == "Home Page":
-    # Add a title to your app
-    st.title("TAR Generator")
+# -------------------------------
+# Upload multiple files
+# -------------------------------
+uploaded_files = st.file_uploader(
+    "Please upload all files pertinent to the report",
+    accept_multiple_files=True
+)
 
-    due_year = st.number_input("Enter the year your report is due:", min_value = datetime.datetime.now().year, max_value = 2100, step=1)
+# -------------------------------
+# Mapping: filename keyword → internal variable name
+# -------------------------------
+filename_to_var = {
+    'new_loans': 'new_loans_df',
+    'escrow_next_disbursement': 'ndd_df',
+    'escrow_restricted_lockouts': 'lockouts_df',
+    'closed_loans': 'closed_loans_df',
+    'corelogic': 'corelogic_df'
+}
 
-    uploaded_files = st.file_uploader("Please upload all files pertinent to the report", accept_multiple_files=True)
+# -------------------------------
+# Helper: normalize filenames
+# -------------------------------
+def normalize_name(name):
+    """
+    Lowercase, replace spaces/hyphens with underscores,
+    remove (number) suffixes and [DMND] brackets, strip whitespace
+    """
+    name = name.lower()
+    name = re.sub(r"\s*\(\d+\)", "", name)   # remove (1), (24), etc.
+    name = re.sub(r"\[.*?\]", "", name)      # remove [DMND] or other brackets
+    name = name.replace(" ", "_").replace("-", "_")
+    return name.strip()
 
-    # Variable to control when to display data
-    show_results = st.button("Process Data")
+# -------------------------------
+# Initialize storage
+# -------------------------------
+df_dict = {}
+abemodule_data = None
 
-    # Dictionary to store DataFrames by their filenames (to avoid overwriting)
-    df_dict = {}
+# -------------------------------
+# Process uploaded files
+# -------------------------------
+if uploaded_files:
+    for file in uploaded_files:
+        normalized_file_name = normalize_name(file.name)
+        matched = False
 
-    # Check if any files have been uploaded
-    if uploaded_files and show_results:
-        
-        for file in uploaded_files:
-            # Get the file name from the UploadedFile object
-            file_name = file.name.lower().split('.csv')[0].split(' ')[0]  # Get the file name
+        for keyword, var_name in filename_to_var.items():
+            if keyword in normalized_file_name:
+                try:
+                    if keyword == 'corelogic':
+                        try:
+                            cl_df = pd.read_csv(file, skiprows=3)
+                        except:
+                            cl_df = pd.read_csv(file, skiprows=3, engine='python')
+                        abemodule_data = clean_corelogic_df(cl_df, due_year)
+                    else:
+                        df_dict[var_name] = pd.read_csv(file)
+                    matched = True
+                    break
+                except Exception as e:
+                    st.error(f"Failed to read file {file.name}: {e}")
+                    matched = True
+                    break
 
-            # Handle CSV files
-            if 'corelogic' in file_name:  # Checking if 'analyze' is in the file name
-                file_content = file.read().decode("utf-8")
-            
-            # Handle other files (e.g., .lis or CSV without 'analyze')
-            else:
-                df = pd.read_csv(file)  # Read CSV file into a DataFrame
+        if not matched:
+            st.warning(f"Unrecognized file uploaded: {file.name}")
 
-                # Store the DataFrame in the dictionary with the filename as the key
-                df_dict[file_name] = df
+    # -------------------------------
+    # Check for missing required files
+    # -------------------------------
+    required_vars = [v for k, v in filename_to_var.items() if k != 'corelogic']
+    missing_files = [v for v in required_vars if v not in df_dict]
+    if abemodule_data is None:
+        missing_files.append('corelogic_df')
 
-        # Check if 'file_content' exists before passing it to clean_data function
-        if 'file_content' in locals():
-            module1_data = clean_data(file_content, due_year)
-        
-        new_df, ndd_df, data_df = clean_and_process_data(
-            df_dict['new_loans_(escrow)_[dmnd]'], 
-            df_dict['escrow_next_disbursement_[dmnd]'], 
-            module1_data
-            )
-
-        data_df, lockouts_df, new_df, closed_df, ndd_df = merge_and_clean_data(
-            data_df, df_dict['escrow_restricted_lockouts_[dmnd]'], 
-            new_df, df_dict['closed_loans_[dmnd]'], 
-            ndd_df
-            )
-        
-        st.write(data_df)
-
-        states_df = filter_state_dfs(data_df)
-        
-        sum_sheets = generate_summary_sheet(states_df)
-                
-                # Debugging: Check if the file is generated properly
-        st.write("Excel file(s) generating ...")
-
-        # Create a download button for the user
-        st.download_button(
-            label="Download Report(s)",  # Label for the button
-            data = create_zip_file(states_df, lockouts_df, new_df, closed_df, ndd_df, sum_sheets),         # The in-memory binary data
-            file_name = "TAR_reports.zip",  # Name of the file to be downloaded
-            mime="application/zip",
-            key = "download_all_reports"
-            )
+    if missing_files:
+        st.error(f"Missing required files: {missing_files}")
     else:
-        st.write("Required files are missing for merging and cleaning.")
+        st.success("All required files uploaded successfully!")
 
-elif page == "Summary Sheet Generation Page":
-    # Code for the Summary Sheet Generation Page
-    st.title("Summary Sheet Generation")
-    uploaded_file = st.file_uploader("Please upload Data sheet", accept_multiple_files=False)
-    # Variable to control when to display data
-    show_results = st.button("Process Data")
-
-    if uploaded_file and show_results:
-        file_content = uploaded_file.read().decode("utf-8")
-        
-        # Use StringIO to convert the string into a file-like object
-        data = io.StringIO(file_content)
-        
-        # Now, read the CSV from the StringIO object
-        df = pd.read_csv(data)
-        
-        # Generate the summary sheet output
-        output = summary_sheet(df)
-
-        # Create an in-memory Excel file to save the summary sheet
-        with io.BytesIO() as excel_file:
-            with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
-                output.to_excel(writer, sheet_name='Summary', index=True)
-            
-            # Seek to the beginning of the in-memory file
-            excel_file.seek(0)
-            
-            # Provide the user a download button
-            st.download_button(
-                label="Download Summary Sheet",  # Label for the button
-                data=excel_file,  # The in-memory binary data
-                file_name="Summary.xlsx",  # Name of the file to be downloaded
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"  # MIME type for Excel files
+        # -------------------------------
+        # Downstream processing
+        # -------------------------------
+        try:
+            # Clean and process
+            new_df, ndd_df, data_df = clean_and_process_data(
+                df_dict['new_loans_df'],
+                df_dict['ndd_df'],
+                abemodule_data
             )
+
+            # Merge & clean
+            data_df, lockouts_df, new_df, closed_df, ndd_df = merge_and_clean_data(
+                data_df, df_dict['lockouts_df'], 
+                new_df, df_dict['closed_loans_df'], 
+                ndd_df
+            )
+
+            # Filter by state and generate summary
+            states_df = filter_state_dfs(data_df)
+            sum_sheets = generate_summary_sheet(states_df)
+
+            st.write("Excel file(s) generating...")
+
+            st.download_button(
+                label="Download Report(s)",
+                data=create_zip_file(states_df, lockouts_df, new_df, closed_df, ndd_df, sum_sheets),
+                file_name="TAR_reports.zip",
+                mime="application/zip",
+                key="download_all_reports"
+            )
+
+        except Exception as e:
+            st.error(f"Error during processing: {e}")
+
+else:
+    st.info("Upload required files to start processing.")
